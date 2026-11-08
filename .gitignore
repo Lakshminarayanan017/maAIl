@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+storybook-static/
+*.local
+.vite/
+
+# Environment — never commit real credentials
+.env
+.env.*
+!.env.example
+# Vite's convention: `.env.development` is committed (it holds public build
+# -time values), `.env.*.local` is not.
+!frontend/.env.development
+*.local
+
+# Secrets and keys
+*.pem
+*.key
+secrets/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local data
+pgdata/
+*.log

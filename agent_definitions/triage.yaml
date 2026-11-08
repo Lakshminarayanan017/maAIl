@@ -1,0 +1,72 @@
+# The economic keystone. Every new thread passes through Triage, and what
+# Triage decides is what every expensive agent downstream is allowed to
+# look at. Routing precision is therefore the most important number in the
+# system: it sets the cost of every later phase.
+#
+# Small model, short prompt, stripped text only, and a hard cap of two
+# steps. If this agent ever needs a large model, the tiering has failed.
+id: triage
+version: "1"
+description: >
+  Reads one thread and decides what kind of thing it is, how much it
+  matters, whether it is waiting on the user, and which specialist agents
+  (if any) should look at it.
+
+# Plane U: it is handed raw email, so it holds nothing that can act.
+plane: U
+tier: small
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+  - mail.get_sender_history
+
+budgets:
+  max_steps: 4
+  max_tokens: 6000
+  max_wall_clock_s: 25
+
+output_schema:
+  type: object
+  required: [category, priority, priority_reason, needs_reply, is_technical, route_to]
+  properties:
+    category:
+      type: string
+      enum:
+        - technical
+        - opportunity
+        - academic
+        - administrative
+        - personal
+        - promotional
+        - notification
+        - other
+    priority:
+      type: integer
+      minimum: 0
+      maximum: 3
+    # Never an unexplained badge. The interface shows this on hover.
+    priority_reason:
+      type: string
+      maxLength: 200
+    needs_reply:
+      type: boolean
+    is_technical:
+      type: boolean
+    route_to:
+      type: array
+      items:
+        type: string
+        enum: [summarizer, deadline, action_items, developer, opportunity]
+  additionalProperties: false
+
+deterministic_alternative: >
+  Partly, and the deterministic part runs first and is not this agent. User
+  rules, sender allow and deny lists, and the significance gate already
+  resolve a large share of threads with no model at all, and anything they
+  settle never reaches here. What is left is the judgement a keyword list
+  gets wrong in both directions: "urgent" in a marketing subject is noise,
+  and a quiet sentence from a supervisor is not. Priority is a reading of
+  the relationship and the ask, not of the vocabulary, and a rules engine
+  that tried would need a rule per sender per context -- which is the
+  thing the user would have to write and maintain.

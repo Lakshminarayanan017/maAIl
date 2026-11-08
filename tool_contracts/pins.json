@@ -1,0 +1,12 @@
+{
+  "mail.get_sender_history": "1c9d1bc204760b5190b3328bb77c7b850740d275977dcc1f8436b7d5ef10eef5",
+  "mail.get_thread": "45a1c3e3af898d07953f284406d84a661718b84fd79edf466ccce7741aa45bcc",
+  "mail.list_recent_threads": "b3038abcac02679a6da742913d076859fed8ecbe789a775fd3ddd872b99dfdf8",
+  "memory.get_conversation_history": "1127c75002881e858b6cde34e1ce8bc72115651eb293d1d43e7202d3b0917ad8",
+  "memory.get_style_profile": "03b8361d14eea2f2b98900c095a75f4291f874163d0189006202c923a52e02db",
+  "memory.get_user_facts": "aba403e551d42a0f4853e5be3d7e772ce61ad43c415ffc9230aedcf8c734bb9e",
+  "memory.propose_memory_update": "973c9ca477565f607f4423a467c093e9744f16a28499517184cd36dadbfcd820",
+  "memory.search_episodes": "98833cd036443584717c122293f73f7ea2522743c904e8510b90c85d60de61a3",
+  "search.messages": "3af412957a09f05a3da56f2028c3eef06404a18263e6a9173641d14ae6f6156c",
+  "search.threads": "44ec6939b00491758ec06260d3f40d363b3b2fe28d51ec66188f79a5f673a93e"
+}

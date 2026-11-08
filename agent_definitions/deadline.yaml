@@ -1,0 +1,87 @@
+# Classification, not arithmetic.
+#
+# The deterministic date parser has already found every date-ish phrase in
+# the text, with its character span and, where the phrase names a
+# resolvable day, the resolved date. This agent is handed that list and
+# decides what each candidate *is*: a real commitment or a mention, the
+# user's problem or someone else's, resolved or genuinely ambiguous.
+#
+# Note what the output schema does not contain: a date field. The model
+# cannot write a date, so the model cannot invent one. Resolved dates come
+# from the parser by candidate index. This is the single most important
+# line in the manifest.
+id: deadline
+version: "1"
+description: >
+  Decides which of the deterministically extracted date phrases in a
+  thread are deadlines, for whom, and whether each one is resolved or
+  ambiguous. Does not compute dates.
+
+plane: U
+tier: small
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+
+budgets:
+  max_steps: 2
+  max_tokens: 8000
+  max_wall_clock_s: 30
+
+output_schema:
+  type: object
+  required: [deadlines]
+  properties:
+    deadlines:
+      type: array
+      maxItems: 12
+      items:
+        type: object
+        required: [candidate_index, is_deadline, date_type, resolution_status, confidence_band, is_for_user]
+        properties:
+          # Which candidate this judgement is about. The raw phrase, the
+          # span and any resolved date are taken from that candidate, not
+          # from this object.
+          candidate_index:
+            type: integer
+            minimum: 0
+          # A date mentioned in passing is not a deadline. "We shipped on
+          # Tuesday" is a candidate and not a commitment.
+          is_deadline:
+            type: boolean
+          date_type:
+            type: string
+            enum: [explicit_absolute, explicit_relative, soft_request, vague, recurring]
+          # 'ambiguous' is a first-class answer and renders as a question
+          # with the sender's phrase quoted. Saying "unclear" correctly is
+          # a pass in the eval, not a miss.
+          resolution_status:
+            type: string
+            enum: [resolved, ambiguous, unresolved]
+          confidence_band:
+            type: string
+            enum: [high, medium, low]
+          # "We will deploy on Friday" is a date, and it is not the
+          # reader's deadline.
+          is_for_user:
+            type: boolean
+          reason:
+            type: string
+            maxLength: 200
+        additionalProperties: false
+  additionalProperties: false
+
+deterministic_alternative: >
+  Partly, and the deterministic part already runs first and is not this
+  agent. Finding the phrases, resolving "next Tuesday" against the send
+  date in the user's timezone, and banding confidence by which rule fired
+  are all code, in ingest/date_parser.py, with no model involved. Three
+  judgements are left. Whether a date is a commitment or a mention: "the
+  deadline is Friday" and "we merged it Friday" are identical to a parser.
+  Whose deadline it is: the sender's own plans are not the reader's
+  obligations, and the difference is in the sentence, not the date. And
+  whether a resolvable phrase is actually ambiguous in context -- "by
+  Friday" in a mail sent on a Friday afternoon. A rules engine answering
+  those would need the sentence's meaning, which is the thing it does not
+  have.

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Your inbox deserves a brain." />
+    <title>maAIl</title>
+    <!-- Resolve the stored theme before first paint, so a pinned dark theme
+         never flashes a warm-white page. Mirrors stores/theme.ts; the two are
+         kept in step by a test. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("maail.theme");
+          if (stored === "dark" || stored === "light") {
+            document.documentElement.setAttribute("data-theme", stored);
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+        } catch (e) {
+          /* private mode, blocked storage — the media query still applies */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

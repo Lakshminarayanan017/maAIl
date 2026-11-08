@@ -1,0 +1,142 @@
+/* Fonts, self-hosted. A privacy-first product does not phone a font CDN on
+   every page load. Variable files, so weights cost one request each. */
+@import "@fontsource-variable/plus-jakarta-sans/index.css";
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg text-fg antialiased;
+    font-family: var(--font-body);
+    font-feature-settings:
+      "cv11" 1,
+      "ss01" 1;
+  }
+
+  /* Brand and major headings (§3). The family is set directly rather than
+     with @apply, because a `.font-brand` rule that applies the `font-brand`
+     utility is a circular dependency. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-brand);
+    letter-spacing: -0.015em;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+
+  /* One focus treatment everywhere, keyboard only. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-bg;
+  }
+
+  ::selection {
+    background-color: hsl(var(--ai-surface));
+    color: hsl(var(--fg));
+  }
+
+  /* Scrollbars that do not fight the palette. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border-strong)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border-strong));
+    border: 3px solid transparent;
+    border-radius: var(--radius-pill);
+    background-clip: content-box;
+  }
+
+  /* Honour the setting. Every transition in the app goes through the duration
+     tokens, so clamping them here is enough. */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --motion-fast: 1ms;
+      --motion: 1ms;
+      --motion-slow: 1ms;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* The one elevation idiom: a subtle border, not a shadow (§4). */
+  .surface {
+    @apply rounded-md border border-line bg-surface;
+  }
+
+  .surface-raised {
+    @apply rounded-md border border-line bg-surface-raised shadow-raised;
+  }
+
+  /* Anything AI-derived sits on lavender and says so. Never used for a value
+     that came out of the email itself — that distinction is the point. */
+  .ai-surface {
+    @apply rounded-sm border border-ai-border bg-ai text-ai-fg;
+  }
+
+  /* Email content. Inter, comfortable measure, never the brand face. */
+  .email-prose {
+    @apply text-[15px] leading-[1.65] text-fg;
+    font-family: var(--font-body);
+    max-width: 68ch;
+  }
+
+  .email-prose a {
+    @apply text-violet underline decoration-violet/30 underline-offset-2;
+  }
+
+  .email-prose blockquote {
+    @apply my-2 border-l-2 border-line pl-3 text-fg-muted;
+  }
+}
+
+@layer utilities {
+  /* A skeleton is a shape, not a spinner — used while mail syncs (§4). */
+  .skeleton {
+    @apply animate-pulse rounded-sm bg-surface-sunken;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}

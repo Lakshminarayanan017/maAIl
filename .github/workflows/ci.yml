@@ -1,0 +1,171 @@
+name: ci
+
+# Blocking gates fail here. Tracked gates are recorded and reviewed, not
+# enforced (docs/architecture/07-harness.md §7).
+#
+# Phase 0 blocking gates:
+#   - a test proves user A's query returns zero of user B's rows, using the
+#     application's own non-owner connection
+#   - import-lint rejects a forbidden dependency
+#   - every user-scoped table has RLS enabled, FORCEd, and a policy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POSTGRES_DB: maail
+  POSTGRES_OWNER_USER: maail_owner
+  POSTGRES_OWNER_PASSWORD: ci_owner_password
+  POSTGRES_APP_USER: maail_app
+  POSTGRES_APP_PASSWORD: ci_app_password
+  # Test values. Credentials are sealed before they are written, so the
+  # tests need a key; this one is visible on purpose and is never used
+  # anywhere real.
+  DATA_ENCRYPTION_KEYS: "1:bWFhaWwtY2ktdGVzdC1rZXktZG8tbm90LXJldXNlISE="
+  DATA_ENCRYPTION_KEY_VERSION: "1"
+  SESSION_SECRET: ci-session-secret-at-least-32-characters-long
+
+jobs:
+  architecture:
+    name: architecture boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: python -m pip install -e ".[dev]"
+        working-directory: backend
+      # No database, no network. If this job is slow, something is wrong with it.
+      - name: import boundaries, clock, procedural memory
+        run: python -m pytest -q -m arch --deselect tests/arch/test_schema_audit.py
+        working-directory: backend
+      - name: ruff format
+        run: python -m ruff format --check .
+        working-directory: backend
+      - name: ruff lint
+        run: python -m ruff check .
+        working-directory: backend
+      - name: mypy
+        run: python -m mypy app
+        working-directory: backend
+
+  backend:
+    name: backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: maail_owner
+          POSTGRES_PASSWORD: ci_owner_password
+          POSTGRES_DB: maail
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U maail_owner -d maail"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: python -m pip install -e ".[dev]"
+        working-directory: backend
+
+      # A service container does not run docker-entrypoint-initdb.d, so the
+      # non-owner application role is created here instead. Without it the
+      # tenancy tests would run as the owner and pass while proving nothing.
+      - name: create the non-owner application role
+        env:
+          PGPASSWORD: ${{ env.POSTGRES_OWNER_PASSWORD }}
+          MAAIL_APP_USER: ${{ env.POSTGRES_APP_USER }}
+          MAAIL_APP_PASSWORD: ${{ env.POSTGRES_APP_PASSWORD }}
+        run: |
+          psql -h localhost -U "$POSTGRES_OWNER_USER" -d "$POSTGRES_DB" \
+               -v ON_ERROR_STOP=1 -f infra/postgres/init/01-app-role.sql
+
+      - name: migrate
+        env:
+          POSTGRES_HOST: localhost
+        run: python -m alembic upgrade head
+        working-directory: backend
+
+      - name: schema audit
+        env:
+          POSTGRES_HOST: localhost
+        run: python -m app.database.audit
+        working-directory: backend
+
+      - name: seed two tenants
+        env:
+          POSTGRES_HOST: localhost
+        run: python -m app.database.seed
+        working-directory: backend
+
+      # The phase 0 gate. These must run, not skip: a skipped tenancy test is
+      # indistinguishable from a passing one in a summary.
+      - name: tenancy isolation
+        env:
+          POSTGRES_HOST: localhost
+        run: python -m pytest -q -m security --no-header
+        working-directory: backend
+
+      - name: every test
+        env:
+          POSTGRES_HOST: localhost
+        run: python -m pytest -q --no-header
+        working-directory: backend
+
+      - name: no test was skipped for a missing database
+        env:
+          POSTGRES_HOST: localhost
+        run: |
+          python -m pytest -q --no-header -m "security or integration" -rs \
+            | tee /tmp/report.txt
+          if grep -qi "unreachable" /tmp/report.txt; then
+            echo "::error::a database-backed test skipped; the gate did not run"
+            exit 1
+          fi
+        working-directory: backend
+
+      - name: migration downgrades cleanly
+        env:
+          POSTGRES_HOST: localhost
+        run: |
+          python -m alembic downgrade base
+          python -m alembic upgrade head
+        working-directory: backend
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+      - run: npm run build-storybook

@@ -1,0 +1,71 @@
+# Two kinds of claim, kept apart by the schema.
+#
+# A *stated* item is one the email contains: the sender wrote a request, and
+# the span proves it. An *inferred* item is this agent's reading of what
+# follows from the thread. Both are useful; conflating them is how a
+# product starts inventing obligations, so `source` is required on every
+# item and a stated item without a span is rejected by the runtime.
+id: action_items
+version: "1"
+description: >
+  Extracts the things that need to happen next from one thread, separating
+  what the sender actually asked for from what the agent infers follows.
+
+plane: U
+tier: small
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+
+budgets:
+  max_steps: 2
+  max_tokens: 8000
+  max_wall_clock_s: 30
+
+output_schema:
+  type: object
+  required: [items, follow_up_needed]
+  properties:
+    items:
+      type: array
+      maxItems: 10
+      items:
+        type: object
+        required: [description, owner, source]
+        properties:
+          description:
+            type: string
+            maxLength: 300
+          # 'unclear' is a real answer. A thread where nobody said who is
+          # doing the work is a thread where nobody said.
+          owner:
+            type: string
+            enum: [user, sender, other, unclear]
+          source:
+            type: string
+            enum: [stated, inferred]
+          message_id: { type: string }
+          # Required in practice for a stated item: the runtime drops a
+          # stated item whose span does not resolve, because a quotation
+          # that cannot be quoted is an inference wearing the wrong label.
+          char_start: { type: integer, minimum: 0 }
+          char_end: { type: integer, minimum: 0 }
+        additionalProperties: false
+    # Is the user the one holding this up? Distinct from having an item:
+    # a thread can have three action items that all belong to the sender.
+    follow_up_needed:
+      type: boolean
+  additionalProperties: false
+
+deterministic_alternative: >
+  No, though a weak version exists and is worth naming because it is what
+  this agent has to beat. Imperative-mood detection plus a question-mark
+  scan finds a usable share of stated requests, and the stub provider does
+  exactly that so the whole path is exercisable without a key. It fails in
+  both directions on real mail: "Could you possibly take a look when you
+  get a chance" is a request with no imperative and no question mark, and
+  "Please find attached" is an imperative that asks for nothing. Ownership
+  is worse -- "someone needs to update the staging config" names no one,
+  and deciding whether that someone is the reader is the whole judgement.
+  The inferred half is not expressible as a rule at all.

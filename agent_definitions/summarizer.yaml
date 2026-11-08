@@ -1,0 +1,108 @@
+# One call, three outputs, and that is a cost decision rather than a
+# shortcut. Summary, intent and entities all read the same stripped text;
+# three agents would pay for that text three times and learn nothing the
+# first pass did not already have in front of it. If any of the three ever
+# needs different context, it leaves and becomes its own manifest.
+#
+# On demand only. Nothing queues a summary because a message arrived --
+# the panel asks when a person opens the thread, and the stored row is
+# keyed by content_version so opening it again costs nothing.
+id: summarizer
+version: "1"
+description: >
+  Reads one thread and produces a short summary, what the sender appears to
+  expect from the user, and the concrete things named in the text --
+  projects, repositories, technologies, dates, errors, people.
+
+# Plane U: handed raw email, so it holds nothing that can act.
+plane: U
+tier: small
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+
+budgets:
+  max_steps: 3
+  max_tokens: 12000
+  max_wall_clock_s: 40
+
+output_schema:
+  type: object
+  required: [summary, bullet_points, evidence, intent, intent_reason, intent_confidence, entities]
+  properties:
+    summary:
+      type: string
+      maxLength: 600
+    bullet_points:
+      type: array
+      maxItems: 5
+      items:
+        type: string
+        maxLength: 200
+    # Without a resolvable span the summary renders as "not determined".
+    # The schema requires the field; the panel requires it to resolve.
+    evidence:
+      type: array
+      items:
+        type: object
+        required: [message_id, char_start, char_end]
+        properties:
+          message_id: { type: string }
+          char_start: { type: integer, minimum: 0 }
+          char_end: { type: integer, minimum: 0 }
+        additionalProperties: false
+    intent:
+      type: string
+      enum:
+        - reply_requested
+        - action_requested
+        - information_only
+        - deadline_set
+        - approval_requested
+        - scheduling
+        - other
+    intent_reason:
+      type: string
+      maxLength: 200
+    intent_confidence:
+      type: string
+      enum: [high, medium, low]
+    entities:
+      type: array
+      maxItems: 20
+      items:
+        type: object
+        required: [kind, value, provenance]
+        properties:
+          kind:
+            type: string
+            enum: [project, repository, technology, date, error_message, person, organization]
+          value:
+            type: string
+            maxLength: 200
+          # Which of the three visual classes this renders as. An entity
+          # the email names is not the same claim as one inferred from it,
+          # and the screen is required to show the difference.
+          provenance:
+            type: string
+            enum: [stated, interpreted]
+          message_id: { type: string }
+          char_start: { type: integer, minimum: 0 }
+          char_end: { type: integer, minimum: 0 }
+        additionalProperties: false
+  additionalProperties: false
+
+deterministic_alternative: >
+  No, and the parts where code does work have already been taken out of
+  this agent's hands. Quote stripping, signature removal and date
+  candidate extraction are Tier 0 and run before anything here. What is
+  left is "what is this thread about" and "what does the sender want",
+  which is a reading of intent across several messages. Extractive
+  summarisation -- first sentence, or highest-TF-IDF sentence -- was the
+  alternative considered, and it fails on exactly the threads that matter:
+  a CI failure email's first sentence is a header, and the sentence that
+  matters is four paragraphs down next to a stack trace. Entity extraction
+  alone could be a gazetteer plus regex, and the regex half is kept (dates
+  and error strings), but "which of these words is a project name" needs
+  the surrounding sentence.

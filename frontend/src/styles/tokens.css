@@ -1,0 +1,225 @@
+/* ===========================================================================
+   Maail design tokens — the locked palette, as CSS variables.
+
+   The six palette values are fixed (08-ui-spec.md §2):
+
+     #F7F6F3  warm white     light background
+     #FFFFFF  pure white     cards and panels
+     #8B70D6  Maail violet   primary actions
+     #25232B  charcoal       dark theme surfaces
+     #E8E2F5  soft lavender  AI highlights
+     #DDEBE2  soft green     success states
+
+   They are stored twice on purpose. `--palette-*` keeps the literal hex, so
+   the locked values are visible and greppable. The semantic tokens hold the
+   same colours as space-separated HSL channels, which is what lets Tailwind
+   apply an opacity modifier — `bg-violet/10` cannot work against a hex.
+
+   Dark is a designed alternative, not an inversion (§5): charcoal is the
+   surface, the page sits a step below it, raised panels a step above, and the
+   violet lightens so it still reads on a dark background.
+   =========================================================================== */
+
+:root {
+  /* --- locked palette, verbatim ------------------------------------------ */
+  --palette-warm-white: #f7f6f3;
+  --palette-pure-white: #ffffff;
+  --palette-violet: #8b70d6;
+  --palette-charcoal: #25232b;
+  --palette-lavender: #e8e2f5;
+  --palette-green: #ddebe2;
+
+  /* --- semantic surfaces ------------------------------------------------ */
+  --bg: 45 20% 96%; /* #F7F6F3 */
+  --surface: 0 0% 100%; /* #FFFFFF */
+  --surface-raised: 0 0% 100%;
+  --surface-sunken: 45 16% 93%;
+
+  /* --- text ------------------------------------------------------------- */
+  --fg: 255 10% 15%; /* #25232B */
+  --fg-muted: 255 6% 42%;
+  --fg-subtle: 255 5% 58%;
+  --fg-on-violet: 0 0% 100%;
+
+  /* --- lines. Subtle borders instead of heavy shadows (§4) --------------- */
+  --border: 250 14% 90%;
+  --border-strong: 250 12% 82%;
+  --ring: 256 55% 64%;
+
+  /* --- primary ---------------------------------------------------------- */
+  --violet: 256 55% 64%; /* #8B70D6 */
+  --violet-hover: 256 50% 58%;
+  --violet-active: 256 48% 52%;
+  --violet-subtle: 259 49% 96%;
+
+  /* --- AI. Soft lavender is the carrier of the AI-versus-fact distinction */
+  --ai-surface: 259 49% 92%; /* #E8E2F5 */
+  --ai-surface-hover: 259 49% 88%;
+  --ai-border: 259 40% 84%;
+  --ai-fg: 256 42% 36%;
+
+  /* --- status ----------------------------------------------------------- */
+  --success: 141 26% 89%; /* #DDEBE2 */
+  --success-fg: 146 40% 26%;
+  --success-border: 141 24% 78%;
+
+  --warning: 38 86% 93%;
+  --warning-fg: 28 70% 28%;
+  --warning-border: 38 70% 80%;
+
+  --danger: 4 76% 95%;
+  --danger-fg: 4 62% 40%;
+  --danger-border: 4 64% 86%;
+
+  --info: 211 70% 94%;
+  --info-fg: 213 60% 32%;
+  --info-border: 211 58% 84%;
+
+  /* --- radii. 10-14px, nothing outside it (§4) -------------------------- */
+  --radius-sm: 10px;
+  --radius: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* --- the 8px spacing scale (§4) --------------------------------------- */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+  --space-8: 64px;
+  --space-9: 72px;
+  --space-10: 80px;
+
+  /* --- the three regions (§6) ------------------------------------------- */
+  --rail-width: 248px;
+  --rail-width-collapsed: 64px;
+  --ai-panel-width: 380px;
+  --ai-panel-width-wide: 440px;
+  --topbar-height: 56px;
+
+  /* --- motion. Smooth 150-200ms interactions (§4) ----------------------- */
+  --motion-fast: 150ms;
+  --motion: 175ms;
+  --motion-slow: 200ms;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- elevation. Deliberately almost nothing (§4) ---------------------- */
+  --shadow-rest: none;
+  --shadow-raised: 0 1px 2px hsl(255 10% 15% / 0.04);
+  --shadow-overlay: 0 8px 24px -6px hsl(255 10% 15% / 0.12);
+
+  /* --- type ------------------------------------------------------------- */
+  --font-brand:
+    "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark, when the system asks for it and the user has not pinned light.
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: 257 12% 11%;
+    --surface: 255 10% 15%; /* #25232B — charcoal is the surface */
+    --surface-raised: 258 10% 19%;
+    --surface-sunken: 257 13% 9%;
+
+    --fg: 45 14% 94%;
+    --fg-muted: 252 8% 68%;
+    --fg-subtle: 252 7% 52%;
+    --fg-on-violet: 257 20% 10%;
+
+    --border: 255 8% 26%;
+    --border-strong: 255 8% 34%;
+    --ring: 256 62% 72%;
+
+    --violet: 256 62% 72%;
+    --violet-hover: 256 66% 78%;
+    --violet-active: 256 58% 66%;
+    --violet-subtle: 258 18% 22%;
+
+    --ai-surface: 258 22% 24%;
+    --ai-surface-hover: 258 24% 28%;
+    --ai-border: 258 24% 34%;
+    --ai-fg: 259 55% 88%;
+
+    --success: 146 18% 22%;
+    --success-fg: 141 44% 80%;
+    --success-border: 146 18% 32%;
+
+    --warning: 32 24% 22%;
+    --warning-fg: 38 80% 78%;
+    --warning-border: 32 24% 32%;
+
+    --danger: 4 26% 22%;
+    --danger-fg: 4 76% 82%;
+    --danger-border: 4 26% 34%;
+
+    --info: 213 26% 22%;
+    --info-fg: 211 70% 82%;
+    --info-border: 213 26% 34%;
+
+    --shadow-raised: 0 1px 2px hsl(257 20% 4% / 0.4);
+    --shadow-overlay: 0 8px 24px -6px hsl(257 20% 4% / 0.6);
+
+    color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dark, pinned by the user. Same block, higher specificity, no @media.
+   --------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --bg: 257 12% 11%;
+  --surface: 255 10% 15%;
+  --surface-raised: 258 10% 19%;
+  --surface-sunken: 257 13% 9%;
+
+  --fg: 45 14% 94%;
+  --fg-muted: 252 8% 68%;
+  --fg-subtle: 252 7% 52%;
+  --fg-on-violet: 257 20% 10%;
+
+  --border: 255 8% 26%;
+  --border-strong: 255 8% 34%;
+  --ring: 256 62% 72%;
+
+  --violet: 256 62% 72%;
+  --violet-hover: 256 66% 78%;
+  --violet-active: 256 58% 66%;
+  --violet-subtle: 258 18% 22%;
+
+  --ai-surface: 258 22% 24%;
+  --ai-surface-hover: 258 24% 28%;
+  --ai-border: 258 24% 34%;
+  --ai-fg: 259 55% 88%;
+
+  --success: 146 18% 22%;
+  --success-fg: 141 44% 80%;
+  --success-border: 146 18% 32%;
+
+  --warning: 32 24% 22%;
+  --warning-fg: 38 80% 78%;
+  --warning-border: 32 24% 32%;
+
+  --danger: 4 26% 22%;
+  --danger-fg: 4 76% 82%;
+  --danger-border: 4 26% 34%;
+
+  --info: 213 26% 22%;
+  --info-fg: 211 70% 82%;
+  --info-border: 213 26% 34%;
+
+  --shadow-raised: 0 1px 2px hsl(257 20% 4% / 0.4);
+  --shadow-overlay: 0 8px 24px -6px hsl(257 20% 4% / 0.6);
+
+  color-scheme: dark;
+}

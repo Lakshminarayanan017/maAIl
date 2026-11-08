@@ -1,0 +1,40 @@
+# The smallest real agent: it reads a thread and reports what it saw.
+#
+# It exists so phase 5's demo is a run that can be inspected end to end --
+# a trace, a token count and a cost -- before any agent with a product
+# purpose is written. Phase 6 replaces it with Triage.
+id: hello
+version: "1"
+description: >
+  Reads one email thread through the mail tool and reports its subject and
+  how many messages it contains. Produces no judgement about anything.
+
+# Plane U: it is given raw email text, so it may hold nothing that acts.
+plane: U
+tier: small
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+
+budgets:
+  max_steps: 4
+  max_tokens: 8000
+  max_wall_clock_s: 30
+
+output_schema:
+  type: object
+  required: [subject, message_count]
+  properties:
+    subject:
+      type: string
+    message_count:
+      type: integer
+  additionalProperties: false
+
+deterministic_alternative: >
+  None is needed and that is the point: this agent does nothing code could
+  not. It exists to exercise the runtime -- planes, budgets, traces, cost --
+  with something whose correct answer is already known, so a failure is a
+  runtime failure rather than an argument about what the model should have
+  said. It is deleted when Triage lands in phase 6.

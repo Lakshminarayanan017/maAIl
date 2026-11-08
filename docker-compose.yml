@@ -1,0 +1,74 @@
+# Maail — local development stack.
+#
+# Two Postgres roles, deliberately:
+#   maail_owner  owns the schema; migrations and db.sh use it
+#   maail_app    the application's role — non-owner, non-superuser, no BYPASSRLS
+#
+# That split is what makes FORCE ROW LEVEL SECURITY inescapable, because a table
+# owner is exempt from its own policies unless the table is FORCEd and the
+# connection is not the owner. See docs/architecture/02-lld-data-model.md §8.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: maail_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_OWNER_USER:-maail_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:-change_me_owner}
+      POSTGRES_DB: ${POSTGRES_DB:-maail}
+      MAAIL_APP_USER: ${POSTGRES_APP_USER:-maail_app}
+      MAAIL_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-change_me_app}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - maail_pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_OWNER_USER:-maail_owner} -d ${POSTGRES_DB:-maail}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: maail_api
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./agent_definitions:/agent_definitions:ro
+      - ./procedures:/procedures:ro
+      - ./prompts:/prompts:ro
+      - ./tool_contracts:/tool_contracts:ro
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  web:
+    image: node:22-alpine
+    container_name: maail_web
+    working_dir: /app
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - maail_web_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    restart: unless-stopped
+
+volumes:
+  maail_pgdata:
+  maail_web_modules:

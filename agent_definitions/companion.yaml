@@ -1,0 +1,81 @@
+# The only agent a person talks to directly, and the only one whose input
+# is the user's own words rather than an email.
+#
+# It is still Plane U, because answering "what did my teammate say about
+# the API" means reading the email that says it. So it holds read tools
+# only, and the deterministic intent router in front of it means most
+# questions never reach a model at all: "what is due this week" is SQL,
+# and a question already answered this conversation is a cache read.
+#
+# `delegate` is NOT here, deliberately. The tool is Plane C (03-lld §145)
+# so that untrusted email text cannot cause agent invocation, and this
+# agent reads untrusted email text. Giving it one anyway would make an
+# injected paragraph able to spend money. The two-phase U -> C companion
+# of 01-hld §186 is what resolves that, and it arrives with the Developer
+# and Response agents it would delegate to.
+id: companion
+version: "1"
+description: >
+  Answers questions about the user's own mail, in conversation, with every
+  claim about email content tied to the words that support it.
+
+plane: U
+tier: large
+prompt_version: "1"
+
+tools:
+  - mail.get_thread
+  - search.threads
+  - search.messages
+  - memory.search_episodes
+  - memory.get_conversation_history
+  - memory.get_user_facts
+  - memory.get_style_profile
+
+budgets:
+  max_steps: 8
+  max_tokens: 24000
+  max_wall_clock_s: 90
+
+output_schema:
+  type: object
+  required: [answer, citations]
+  properties:
+    answer:
+      type: string
+      maxLength: 4000
+    # Every claim about email content needs one of these, and each is
+    # checked against the message before the turn is stored. An answer
+    # whose citations do not resolve does not reach the user as an answer.
+    citations:
+      type: array
+      maxItems: 12
+      items:
+        type: object
+        required: [message_id, char_start, char_end]
+        properties:
+          thread_id: { type: string }
+          message_id: { type: string }
+          char_start: { type: integer, minimum: 0 }
+          char_end: { type: integer, minimum: 0 }
+        additionalProperties: false
+    # Offered to the user as buttons, not asked of them as prose.
+    follow_ups:
+      type: array
+      maxItems: 3
+      items:
+        type: string
+        maxLength: 120
+  additionalProperties: false
+
+deterministic_alternative: >
+  For a large share of real questions, yes -- and that share is routed
+  away from this agent before it starts, by the intent router in
+  companion/router.py. "Which emails need my attention", "what is due this
+  week", "how many unread" are counts and filters over stored
+  intelligence, and they are answered in SQL with zero model calls and
+  citations built by code. What is left needs a model for two reasons.
+  The question arrives in open natural language, so there is no fixed set
+  of parameters to parse into. And the answer is a synthesis across
+  several threads -- "what did we decide about the API" has its answer
+  spread over four messages and two weeks, which is not a query.
